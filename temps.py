@@ -7,8 +7,8 @@ import argparse
 import logging
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--max_temp', type=int, default="FILL", help='set Max temp')
-parser.add_argument('--crit_temp', type=int, default="FILL", help='set Critical temp')
+parser.add_argument('--max_temp', type=int, default=-1, help='set Max temp')
+parser.add_argument('--crit_temp', type=int, default=-1, help='set Critical temp')
 parser.add_argument('--wtc_name', type=str, default="FILL", help='set WTC name')
 parser.add_argument('--sender', type=str, default="amartyaveer72@gmail.com", help='sender email')
 parser.add_argument('--receiver', type=str, default=["FILL"], help='receiver email(s)')
