@@ -2,14 +2,19 @@ import platform
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-import os
-system = platform.system()
-max_temp = 62   #####
-crit_temp = 70  #####
-wtc_name = 'WTC13' #####
-sender = "amartyaveer72@gmail.com"
-password = "*********" ######
-receivers_email = '/home1/Amartya/Temperature/receiver.txt'  #####
+import os, sys
+import argparse
+import logging
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--max_temp', type=int, default=-1, help='set Max temp')
+parser.add_argument('--crit_temp', type=int, default=-1, help='set Critical temp')
+parser.add_argument('--wtc_name', type=str, default="FILL", help='set WTC name')
+parser.add_argument('--sender', type=str, default="amartyaveer72@gmail.com", help='sender email')
+parser.add_argument('--receiver', type=str, default=["FILL"], help='receiver email(s)')
+parser.add_argument('--sendor_password', type=str, default="FILL", help='sender password')
+parser.add_argument('--email_server', type=str, default="smtp.gmail.com:587", help='email server')
+parser.add_argument('--log_location', type=str, default=None, help='full path to log folder')
 
 def get_cpu_temperature():
     if system == "Linux":
@@ -38,40 +43,55 @@ def kill_gpu_processes():
             os.system(f"kill -9 {pid}")
 
     except Exception as e:
-        print(f"Error while killing GPU processes: {e}")
+        logging.info(f"Error while killing GPU processes: {e}")
+        
         
         
 def send_mail(temp):
-    emailServer = "smtp.gmail.com:587"
 
-    # Replace receiver with the email address where you want to send the message
-    receivers = os.popen(f'cat {receivers_email}').read().splitlines() #####
     subject = "WARNING: SERVER TEMPS!"
-    body = f"{wtc_name} temp have exceeded {max_temp}\nCurrent temp: {temp}\nPlease check the server immediately!"
+    body = f"{args.wtc_name} temp have exceeded {args.max_temp}\nCurrent temp: {temp}\nPlease check the server immediately!"
 
     # Email sending code
     msg = MIMEMultipart()
-    msg['From'] = sender
-    msg['To'] = " ".join(receivers)
+    msg['From'] = args.sender
+    msg['To'] = " ".join(args.receiver)
     msg['Subject'] = subject
     msg.attach(MIMEText(body))
 
     try:
-        server = smtplib.SMTP(emailServer)
+        server = smtplib.SMTP(args.email_server)
         server.starttls()
-        server.login(sender, password)
+        server.login(args.sender, args.sendor_password)
         server.sendmail(msg['From'], msg['To'], msg.as_string())
         server.quit()
-        print("Email sent successfully!")
+        logging.info("Email sent successfully!")
     except Exception as e:
-        print(f"Failed to send email. Error: {e}")
+        logging.info(f"Failed to send email. Error: {e}")
 
 
 if __name__ == "__main__":
+    
+    args = parser.parse_args()
+    system = platform.system()
+
+    handlers = [logging.StreamHandler()]
+    
+    if args.log_location is not None:
+        handlers = handlers + [logging.FileHandler(os.path.join(args.log_location, "debug.log"))]
+    
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=handlers
+    )
+    logging.info("Setup 'max_temp, crit_temp, wtc_name, receiver' and remove this this line and exit after!")
+    exit()
+
     cpu_temperature = get_cpu_temperature()
-    print('cpu_temperature', cpu_temperature)
-    if cpu_temperature is not None and cpu_temperature > max_temp:
+    logging.info(f'cpu_temperature: {cpu_temperature}')
+    if cpu_temperature is not None and cpu_temperature > args.max_temp:
         send_mail(cpu_temperature)
     
-    if cpu_temperature is not None and cpu_temperature > crit_temp:
-        kill_gpu_processes()
+    if cpu_temperature is not None and cpu_temperature > args.crit_temp:
+       kill_gpu_processes()
